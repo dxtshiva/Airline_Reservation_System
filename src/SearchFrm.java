@@ -1,4 +1,5 @@
 
+import com.toedter.calendar.JTextFieldDateEditor;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -6,6 +7,7 @@ import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -18,14 +20,16 @@ import javax.swing.JOptionPane;
  * @author dxt_s
  */
 public class SearchFrm extends javax.swing.JFrame {
-
+    String user;
     /**
      * Creates new form SearchFrm
      */
     public SearchFrm() {
         initComponents();
     }
-
+        public SearchFrm(String s){
+            this.user = s;
+        }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -89,8 +93,8 @@ public class SearchFrm extends javax.swing.JFrame {
                     .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 81, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(55, 55, 55)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jDateChooser1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 242, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jComboBox1, 0, 242, Short.MAX_VALUE)
+                    .addComponent(jDateChooser1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(165, 165, 165)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -119,16 +123,16 @@ public class SearchFrm extends javax.swing.JFrame {
                             .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 47, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 47, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(59, 59, 59)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(jDateChooser1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 47, Short.MAX_VALUE))))
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, 47, Short.MAX_VALUE)
+                            .addComponent(jDateChooser1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 .addContainerGap(41, Short.MAX_VALUE))
         );
 
-        jTable1.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        jTable1.setFont(new java.awt.Font("Tahoma", 0, 16)); // NOI18N
         jTable1.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null, null, null}
+
             },
             new String [] {
                 "Flight Number", "Airline", "Departure", "Arrival", "Seats Available", "Fare"
@@ -149,6 +153,8 @@ public class SearchFrm extends javax.swing.JFrame {
                 return canEdit [columnIndex];
             }
         });
+        jTable1.setRowHeight(28);
+        jTable1.setRowMargin(10);
         jScrollPane1.setViewportView(jTable1);
 
         jButton1.setFont(new java.awt.Font("Times New Roman", 0, 24)); // NOI18N
@@ -202,22 +208,37 @@ public class SearchFrm extends javax.swing.JFrame {
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
      String src = jComboBox1.getSelectedItem().toString();
      String dstn = jComboBox2.getSelectedItem().toString();
-     String dow = new SimpleDateFormat("EEEE").format(jDateChooser1.getDate()); 
+     String dow = new SimpleDateFormat("EEEE").format(jDateChooser1.getDate());
+     int category = jComboBox3.getSelectedIndex();
+     DefaultTableModel model  = (DefaultTableModel)jTable1.getModel();
+     model.setRowCount(0);
+     double multiplier=1;
+     if(category==2)
+         multiplier=1.8;
+     else if(category==3)
+         multiplier=2.9;
+         
      if(src.equals(dstn))
          JOptionPane.showMessageDialog(this,"Source and Destination should be different","Error",JOptionPane.ERROR_MESSAGE);
+     else if(category==0)
+         JOptionPane.showMessageDialog(this, "Please select a category","NULL",JOptionPane.INFORMATION_MESSAGE);
      else
       try{
         Connection con= DriverManager.getConnection("jdbc:mysql://localhost:3306/flight_reservation","root","123");
         Statement stmt = con.createStatement();
         ResultSet rs  = stmt.executeQuery("Select fno,airline, arr, dept, base_fare from flight where src = '"+src+"' and dstn = '"+dstn+"' and dow like '%"+dow+"%';");
-        rs.next();
-        if(rs.wasNull())
-            System.out.println("No data found.");
-        else
+        Statement stmt1 = con.createStatement();
+        ResultSet rs1;
+        if(!rs.next())
+            JOptionPane.showMessageDialog(this,"No data found.","Error",JOptionPane.INFORMATION_MESSAGE);
+        else{
+ 
         while(rs.next()){
-            System.out.println(rs.getInt(1));
+            rs1 = stmt1.executeQuery("select count(*) from reservation where fno = "+rs.getInt(1)+" and doj='"+jDateChooser1.getDate().toString()+"' and category="+category);
+            rs1.next();
+            model.addRow(new Object[]{rs.getInt(1),rs.getString(2),rs.getString(3),rs.getString(4),75-rs1.getInt(1),rs.getInt(5)*multiplier});
         }
-               
+        }         
     }catch(Exception e){
         JOptionPane.showMessageDialog(this, e.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
     }
@@ -241,6 +262,8 @@ public class SearchFrm extends javax.swing.JFrame {
         jDateChooser1.setMinSelectableDate(new java.sql.Date(System.currentTimeMillis()));
         jDateChooser1.setMaxSelectableDate(new SimpleDateFormat("yyyy-MM-dd").parse(LocalDate.parse(new java.sql.Date(System.currentTimeMillis()).toString()).plusMonths(6).toString()));
         jDateChooser1.setDate(new java.sql.Date(System.currentTimeMillis()));
+        JTextFieldDateEditor editor = (JTextFieldDateEditor) jDateChooser1.getDateEditor();
+        editor.setEditable(false);
         
     }catch(Exception e){
         System.out.println(e);
